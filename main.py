@@ -74,6 +74,9 @@ class GestureApp:
                     self.running = payload == 'Pause control'
                 elif kind == 'opened':
                     self.status.set('Camera ready • Enable control to begin')
+                elif kind == 'mode':
+                    self.control_mode.set(payload)
+                    self.update_guide()
                 elif kind == 'closed':
                     self.running = False
                     self.pause_button.config(text='Enable control')
@@ -120,6 +123,8 @@ class GestureApp:
         self.pause_button.config(text='Enable control')
         self.update_guide()
         self.send_config()
+        if self.worker is not None and self.worker.is_alive():
+            self.worker.commands.put(('select_mode',self.control_mode.get()))
         self.status.set(f'{self.control_mode.get()} ready • Enable control to begin')
 
     def stop(self):

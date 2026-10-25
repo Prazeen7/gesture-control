@@ -6,7 +6,7 @@ For drag-and-drop, Volume mode, Air keyboard mode, and the camera HUD, see [Adva
 
 ## 1. Setup and launch
 
-You need a working webcam, Windows camera access, Python 3.11 with Tkinter, and OpenCV, MediaPipe, PyAutoGUI, and NumPy. See the [README](../README.md#quick-start) for installation commands.
+You need a working webcam, Windows camera access, Python 3.11 with Tkinter, and OpenCV, MediaPipe, PyAutoGUI, and NumPy. Install with `.venv\Scripts\python.exe -m pip install -r requirement.txt` from the project root. See the [README](../README.md#install-and-run) for complete setup.
 
 Launch from the project directory:
 
@@ -16,7 +16,7 @@ Launch from the project directory:
 
 Close older copies of Gesture Control before starting a new session so they do not compete for the webcam.
 
-Click **Start camera**, show your pointing hand at a comfortable height, then click **Enable control**. Starting the camera alone does not enable mouse control.
+Click **Start camera**, show your pointing hand at a comfortable height, then click **Enable control**. Hold left thumbs-up for 1.2 seconds to cycle Mouse, Volume, and Air keyboard (use the visible hand in one-hand mode); release between switches. Manual mode selection pauses input. Gesture changes resume previously active input after release. Starting the camera alone does not enable mouse control.
 
 ## 2. Layout and buttons
 
@@ -48,7 +48,7 @@ If reaching an edge is difficult, click **Recenter hand** while your hand is com
 
 ### 🤏 Click with the left hand
 
-Keep the right pointing hand visible. Touch the left thumb and index fingertips together briefly, then separate them before clicking again. A short pinch must persist for roughly 45 milliseconds and clicks when released. Holding for the configured drag duration starts dragging instead; release to drop. Click cooldown also applies.
+Keep the right pointing hand visible. Touch the left thumb and index fingertips together briefly, then separate them before clicking again. A short pinch must persist for roughly 20 milliseconds and clicks when released. Holding for the configured drag duration starts dragging instead; release to drop. Click cooldown also applies.
 
 The right cursor hand can continue moving while the left pinches. Aim steadily when clicking a small target. The removed index-bend click gesture is not available.
 
@@ -104,6 +104,7 @@ Values below are built-in defaults, not necessarily the values currently saved i
 | Cursor responsiveness | 0.50 | 0.05–1.00 | Lower smooths movement; higher follows faster |
 | Pinch sensitivity | 0.045 | 0.015–0.10 | Higher detects a pinch with fingertips farther apart |
 | Click cooldown | 0.25 seconds | 0.1–2.0 seconds | Minimum delay between clicks |
+| Pinch hold to drag | 0.45 seconds | 0.25–1.5 seconds | Hold before mouse-down; release to drop |
 | Scroll activation distance | 0.015 | 0.005–0.06 | Lower needs less movement to choose palm direction; also sets the one-hand scroll dead zone |
 | Two-hand mode | On | On / Off | Selects the gesture rules |
 
@@ -165,3 +166,5 @@ This application requires the legacy API. Use the project's Python 3.11 environm
 Video processing happens locally. The application contains no recording or upload feature. It controls the real system mouse, and PyAutoGUI's corner failsafe remains enabled.
 
 Recognition depends on lighting, angle, distance, hand overlap, and camera frame rate. Scrolling uses discrete wheel events, not native precision-touchpad gestures. Right-click, custom gesture training, and multi-monitor calibration are not implemented. Drag-and-drop, a basic English virtual keyboard, Windows volume control, and HUD are described in the advanced guide.
+
+

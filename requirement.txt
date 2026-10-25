@@ -1,0 +1,9 @@
+# Runtime dependencies for Python 3.11 on Windows.
+# Install only one OpenCV distribution: this one also satisfies MediaPipe.
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
+numpy==1.26.4
+PyAutoGUI==0.9.54
+
+# Tkinter, ctypes, threading, and queue come with Python.
+# Node.js, Hyperframes, and FFmpeg are only for the optional launch video.

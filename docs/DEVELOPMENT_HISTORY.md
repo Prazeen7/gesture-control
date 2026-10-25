@@ -37,3 +37,7 @@ Added selectable Mouse, Volume and Air keyboard modes; short-pinch release click
 ### Drag freeze architecture correction
 
 Moved camera capture, hand inference and mouse output into an independent GestureEngine worker. The OpenCV preview has a separate thread and a latest-frame queue. Tk remains responsible only for widgets, queued commands and status. Added a regression that blocks preview processing while tracking, drag movement and release continue.
+
+### Documentation and dependency manifest refresh
+
+Reconciled current user/technical/advanced documentation after the worker-thread architecture, thumbs-up mode cycle, native drag events and short-click release fixes. Removed stale claims about camera switching and absent test modules. Added requirement.txt with pinned Python 3.11 runtime packages and a single OpenCV distribution; documented the two available regression modules and separated app dependencies from optional launch-video tooling.

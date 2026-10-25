@@ -2,6 +2,48 @@
 import math
 
 
+CONTROL_MODES = ('Mouse', 'Volume', 'Air keyboard')
+
+
+def thumbs_up(landmarks, fingers):
+    if landmarks is None or any(fingers):
+        return False
+    tip, joint, base = landmarks[4], landmarks[3], landmarks[5]
+    vertical = joint.y-tip.y
+    return vertical > .025 and vertical > abs(tip.x-joint.x)*1.2 and tip.y < base.y-.02
+
+
+class ModeCycle:
+    def __init__(self, hold=1.2, release=.25):
+        self.hold, self.release = hold, release
+        self.started = self.released = None
+        self.fired = self.active = False
+
+    @property
+    def blocked(self):
+        return self.active or self.fired
+
+    def update(self, active, now):
+        self.active = active
+        if active:
+            self.released = None
+            if self.started is None:
+                self.started = now
+            if not self.fired and now-self.started >= self.hold:
+                self.fired = True
+                return 'switch'
+        else:
+            self.started = None
+            if self.fired:
+                if self.released is None:
+                    self.released = now
+                if now-self.released >= self.release:
+                    self.fired = False
+                    self.released = None
+                    return 'release'
+        return None
+
+
 def drag_target(origin, x, y, width, height, speed, vertical_range):
     start_x, start_y, cursor_x, cursor_y = origin
     return (max(1, min(width-2, cursor_x+(x-start_x)*speed*width/.7)),
@@ -9,7 +51,9 @@ def drag_target(origin, x, y, width, height, speed, vertical_range):
 
 
 def keep_drag_mode(pinched, started, dragging, current_mode):
-    return pinched and (started is not None or dragging or current_mode == 'move')
+    # Finish an in-progress click/drag on its release frame before interpreting
+    # the newly opened hand as a palm-scroll or pause gesture.
+    return current_mode == 'move' and (pinched or started is not None or dragging)
 
 
 class PinchDrag:
@@ -31,7 +75,7 @@ class PinchDrag:
             event = None
             if self.dragging:
                 event = 'up'
-            elif self.started is not None and now-self.started >= .045 and now-self.last_click >= cooldown:
+            elif self.started is not None and now-self.started >= .020 and now-self.last_click >= cooldown:
                 event = 'click'
                 self.last_click = now
             self.started = None

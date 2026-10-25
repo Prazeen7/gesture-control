@@ -8,7 +8,7 @@ import mediapipe as mp
 import pyautogui
 from camera import open_camera
 from camera_preview import CameraPreview
-from interactions import PinchDrag, drag_target, keep_drag_mode
+from interactions import PinchDrag, drag_target, keep_drag_mode, ModeCycle, CONTROL_MODES, thumbs_up
 from mouse_input import move_drag_cursor
 from features import FeatureModes, draw_hud
 from motion import screen_target, follow, ScrollMotion, PalmScroll, hand_roles, raised_fingers, palm_source
@@ -62,6 +62,8 @@ class GestureEngine(Thread):
         self.pause_button = ButtonProxy(self.emit)
         self.preview = CameraPreview(self.request_stop)
         self.processed_frames = 0
+        self.mode_gesture = ModeCycle()
+        self.resume_after_gesture = False
 
     def emit(self, kind, payload):
         try:
@@ -79,15 +81,52 @@ class GestureEngine(Thread):
         self.finished.set()
 
     def configure(self, options):
-        changed = options['mode'] != self.control_mode.get() or options['two_hands'] != self.two_hands.get()
+        changed = options['two_hands'] != self.two_hands.get()
         self.options = options
         for key,value in options['values'].items():
             self.values[key].set(value)
         self.hud_enabled.set(options['hud_enabled'])
         self.two_hands.set(options['two_hands'])
-        self.control_mode.set(options['mode'])
         if changed:
+            self.mode_gesture = ModeCycle()
+            self.resume_after_gesture = False
             self.change_control_mode()
+
+    def select_mode(self, mode):
+        if mode not in CONTROL_MODES or mode == self.control_mode.get():
+            return
+        self.mode_gesture = ModeCycle()
+        self.resume_after_gesture = False
+        self.control_mode.set(mode)
+        self.change_control_mode()
+        self.emit('mode',mode)
+
+    def process_mode_gesture(self, pointer, action, now):
+        source = action if self.two_hands.get() else pointer
+        lm = source.landmark if source is not None else None
+        active = thumbs_up(lm, raised_fingers(lm)) if lm is not None else False
+        event = self.mode_gesture.update(active,now)
+        if event == 'switch':
+            self.resume_after_gesture = self.running
+            current = CONTROL_MODES.index(self.control_mode.get())
+            selected = CONTROL_MODES[(current+1)%len(CONTROL_MODES)]
+            self.control_mode.set(selected)
+            self.change_control_mode()
+            self.emit('mode',selected)
+        elif event == 'release':
+            self.running = self.resume_after_gesture
+            self.resume_after_gesture = False
+            self.pause_button.config(text='Pause control' if self.running else 'Enable control')
+        if self.mode_gesture.blocked:
+            self.release_drag()
+            self.features.selector.update(None,False,now,enabled=False)
+            self.palm_scroll.reset()
+            self.scroll_motion.reset()
+            if self.mode_gesture.fired:
+                return f'{self.control_mode.get().upper()} SELECTED - RELEASE THUMBS UP'
+            progress = min(100,int((now-self.mode_gesture.started)/self.mode_gesture.hold*100))
+            return f'HOLD THUMBS UP TO CHANGE MODE - {progress}%'
+        return None
 
     def run(self):
         try:
@@ -109,6 +148,8 @@ class GestureEngine(Thread):
                         self.toggle()
                     elif command == 'recenter':
                         self.recenter()
+                    elif command == 'select_mode':
+                        self.select_mode(payload)
                 if not self.finished.is_set():
                     self.tick()
         except Exception as error:
@@ -223,12 +264,15 @@ class GestureEngine(Thread):
             for visible_hand in detected:
                 mp.solutions.drawing_utils.draw_landmarks(frame, visible_hand, mp.solutions.hands.HAND_CONNECTIONS)
             hand, action_hand = hand_roles(detected, result.multi_handedness or [], self.two_hands.get())
+            mode_status = self.process_mode_gesture(hand, action_hand, time.monotonic())
             pointer_available = hand is not None
             # A left palm can scroll even when the pointing hand leaves the camera.
             if (hand is None and self.two_hands.get() and action_hand is not None
                     and all(raised_fingers(action_hand.landmark))):
                 hand = action_hand
-            if self.control_mode.get() != 'Mouse':
+            if mode_status is not None:
+                status = mode_status
+            elif self.control_mode.get() != 'Mouse':
                 self.release_drag()
                 status = self.features.process(frame, self.control_mode.get(),
                     hand if pointer_available else None, action_hand,

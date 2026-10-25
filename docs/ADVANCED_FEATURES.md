@@ -1,94 +1,98 @@
 # Advanced features
 
-## Modes and shared controls
+Updated 25 October 2026. Install with `pip install -r requirement.txt` from the project root; use Python 3.11 on Windows. See the [README](../README.md) for full setup.
 
-The mode selector above the two tabs offers **Mouse**, **Volume**, and **Air keyboard**. Each mode change pauses input and releases a held drag. Start the camera, choose the mode, then Enable control. The gesture guide changes with the mode. Space toggles control when the panel has focus; Escape stops the camera. Q stops it from the preview. Only Mouse mode emits cursor movement/click/scroll output.
+## Mode selection by gesture or UI
 
-No new packages are required. Windows volume uses Core Audio directly through Python ctypes.
+Choose Mouse, Volume, or Air keyboard above the tabs. Manual selection pauses output; enable it again when ready.
 
-## Pinch and hold to drag
+For hands-free switching, fold all four non-thumb fingers and hold an upright **👍 thumbs-up for 1.2 seconds**. Use the left hand in two-hand mode, or the visible hand in one-hand mode. The order is **Mouse → Volume → Air keyboard → Mouse**.
 
-In Mouse mode, use the left hand to pinch in two-hand mode, or the same pointing hand in one-hand mode.
+The HUD shows hold progress and the selected mode. One hold changes one mode; release for at least 0.25 seconds before switching again. Output is suspended while the gesture is held. Active control resumes on release; an already paused session stays paused. The selector and guide synchronize with the worker-selected mode.
 
-1. Aim the cursor at a window title bar, file, or other draggable item.
-2. Pinch thumb and index and hold for the configured duration (default **0.45 seconds**).
-3. The HUD shows DRAGGING; move the pointing hand to drag.
-4. Release the pinch to drop. One-hand cursor movement resumes while dragging, so the held pinch does not freeze the pointer.
+A sideways thumb or an extended non-thumb finger does not qualify. Mode switching requires the camera to be running. It works across all three control modes, including while control is paused.
 
-A **short pinch clicks on release**, rather than immediately on pinch entry. This distinguishes a click from a hold without emitting a click before every drag. Separate fingertips before the next pinch. Adjust **Pinch hold to drag** in Settings (0.25–1.5 seconds). Click cooldown still governs short clicks.
+## Click and drag
 
-Pausing, stopping, losing the pointer/click hand, switching hand/control mode, entering a scroll pose, or closing the app releases the held mouse button. Mouse-up cleanup also runs when PyAutoGUI's corner failsafe has fired. Dragging depends on the target app supporting drag; some elevated apps may reject ordinary desktop input.
+In Mouse mode, the left hand pinches in two-hand mode; the pointing hand pinches in one-hand mode.
 
-## Finger-distance volume control
+- **Click:** Pinch briefly, then release. A detected pinch lasting at least 20 ms can click, subject to cooldown. Separate fingertips before another click.
+- **Drag:** Aim at a window title bar or draggable item, hold the pinch for the configured duration (default 0.45 seconds), move the pointing hand, then release to drop.
 
-1. Choose **Volume** and enable control.
-2. Show the right hand in two-hand mode, or your visible hand in one-hand mode.
-3. Widen the thumb/index gap to increase Windows output volume; narrow it to decrease.
-4. Watch the fingertip line, vertical meter, and percentage in the camera preview.
-5. Pause or remove the hand to hold the current level. Choose Mouse to return to mouse controls.
+A pending pinch keeps cursor mode through its release frame. Opening the hand therefore completes the click/drop before selecting palm scrolling. A long hold emits mouse-down instead of a click; release emits mouse-up without an extra click.
 
-The gap is normalized by wrist-to-middle-base palm distance, reducing changes caused only by camera depth. Updates are limited to roughly ten per second, with at most five percentage points per update. Volume moves gradually toward the gesture's target. The gesture does not toggle mute. It controls the default Windows multimedia playback endpoint; reconnecting devices may require changing modes or pausing/resuming to reopen that endpoint.
+Drag movement starts relative to the grab position, avoiding the fingertip jump caused by closing a pinch. In one-hand mode the pointer is steadied during pinch formation, then follows the hand once dragging starts. In two-hand mode the right pointer can move while the left pinches.
 
-An unavailable endpoint produces an error and stops the camera. Reconnect an audio output and restart. The adapter uses [Microsoft's normalized endpoint volume API](https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nf-endpointvolume-iaudioendpointvolume-setmastervolumelevelscalar).
+Losing either required hand, pausing, changing mode, stopping, or exiting releases held input. The corner failsafe remains active, with a cleanup exception only to ensure mouse-up can be sent. Some elevated applications reject ordinary injected input.
+
+### Drag freeze correction
+
+Camera capture, hand tracking, and input output now run in engine.py independently of Tk. OpenCV preview/event handling runs on a second thread with only the newest frame queued. A UI window-move loop cannot block gesture tracking or pinch release. The preview itself may temporarily stop repainting while that preview window is being moved; tracking still continues.
+
+Active Windows drag movement uses SendInput movement events instead of only repositioning the pointer. Close older app copies and restart after updating. If a drag remains stuck, use Pause/Stop and check that both required hands are visible; record whether the freeze affects only the preview repaint or all tracking.
+
+## Palm scrolling and auto-scroll
+
+In two-hand Mouse mode, open either palm and make one clear upward/downward movement. That locks continuous scroll direction. Holding still or returning the hand does not reverse it. **Close the palm to stop; reopen to choose the opposite direction.** The left palm wins if both are open and can scroll alone without the right hand.
+
+Right index + middle fingers select auto-scroll in the last palm direction. Without a previous direction, fingertip orientation relative to the wrist supplies the initial direction. Return to one pointing finger to stop; close any open left palm as well.
+
+One-hand mode differs: open palm pauses; two raised fingers scroll according to displacement from a starting height. Return to that height or lower the middle finger to stop.
+
+Scroll amount accepts any positive finite number. Values above 10 work, but large values can scroll very quickly. Invalid input keeps the last valid amount and blocks saving until corrected.
+
+## Windows volume
+
+1. Select Volume, or use the thumbs-up cycle.
+2. Enable control if paused.
+3. Use the right hand in two-hand mode, or the visible hand in one-hand mode.
+4. Widen thumb/index distance to raise volume; narrow it to lower volume.
+
+The preview shows a fingertip line, volume meter and percentage. The gap is measured relative to palm size. Changes approach the target gradually, with updates around ten times per second and at most five percentage points per update. Pause or remove the hand to hold the level. Mouse clicks and scrolling are suppressed in this mode.
+
+The default Windows multimedia playback endpoint is controlled through [Core Audio](https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nf-endpointvolume-iaudioendpointvolume-setmastervolumelevelscalar). Mute is not toggled. After changing output devices, pause/resume or change modes to reopen the endpoint. An unavailable endpoint reports an error and stops processing.
 
 ## Air keyboard
 
-1. Choose **Air keyboard**, start the camera, and enable control.
-2. Use the physical mouse once to focus the app/text field that should receive text. The keyboard sends input to the active app; it does not maintain its own text buffer.
-3. Aim the right index fingertip at a key drawn in the camera preview. In one-hand mode use the visible hand.
-4. Pinch with the left hand in two-hand mode, or the pointing hand in one-hand mode. Keep the pinch briefly (about 80 ms).
-5. The target locks at pinch start, so bending the finger does not change the selected key. Separate fingertips before the next key.
+1. Select Air keyboard and enable control.
+2. Focus the target application/text field with the physical mouse.
+3. Aim the right index at a camera-preview key (visible hand in one-hand mode).
+4. Pinch with the left hand in two-hand mode, or the same hand in one-hand mode.
+5. Hold briefly, around 80 ms, then release before the next key.
 
-A held pinch types at most one key. Missing hands, pause, and mode changes cancel pending selections and require a release before another key. The OS cursor stays still in this mode.
-
-Available controls:
+The target locks when the pinch starts. Holding a pinch emits one key, not repeated characters. Missing hands, pause and mode changes cancel pending selections. OS cursor movement is suspended in this mode.
 
 | Key | Action |
 | --- | --- |
-| Letters | Basic English QWERTY input |
+| Letters | Basic English QWERTY typing |
 | Shift | Uppercase the next letter; press again to toggle off |
 | 123 / ABC | Switch numbers/punctuation and letters |
-| Space | Insert a space |
+| Space | Space |
 | Back | Backspace |
-| Enter | Enter/Return |
+| Enter | Return/Enter |
 
-Letters use the current keyboard layer; this is basic simulated desktop input, not multilingual IME support. Focus matters: if the camera or controller is focused, keystrokes go there. For reliable typing, enable the mode first, then focus the intended text field. Pause before clicking back into the controller when you are finished.
+Input goes to the currently focused application. There is no internal text buffer, automatic focus restoration, or multilingual IME. Enable first, then focus the intended field. Pause before clicking back into the controller when finished.
 
-## Sci-fi camera HUD
+## Sci-fi HUD
 
-The **Sci-fi HUD** checkbox toggles the overlay. It contains a dark translucent status strip, cyan tracking corner brackets, detected-hand count, active control mode, drag state, and stop shortcut. Volume mode adds a distance line and level meter. Air keyboard mode draws keys, a fingertip cursor, and the target highlight.
+Toggle Sci-fi HUD above the tabs. It adds a translucent status strip, cyan hand brackets, hand count, control mode, drag state, mode-switch countdown and stop hint. Functional keyboard keys/hover and volume indicators remain available when decorative HUD is disabled. Save settings persists HUD visibility; the selected control mode starts as Mouse on a new launch.
 
-Disabling HUD keeps the functional keyboard and volume visual controls; it removes the decorative tracking/status overlay and falls back to plain status text. Save settings to retain HUD visibility. The selected control mode always starts as Mouse on a fresh launch.
+## Controls and recovery
 
-## Verification and limits
+- Space in the controller: pause/resume; editing inputs and the mode selector are exempt.
+- Escape in the controller: stop camera.
+- Q in the preview, closing the preview, or Stop camera: stop processing.
+- Recenter hand: use the next cursor gesture's comfortable fingertip height as vertical center.
+- Save settings persists adjustments; Restore defaults needs Save to persist.
 
-Run:
+Tk widgets, tracking and preview communicate using queues. Stop is asynchronous so the GUI can remain responsive while worker-owned resources are released. Allow it to finish before starting another camera session.
+
+## Verification
 
 ```powershell
-.venv\Scripts\python.exe -m unittest discover -p "test_*.py"
+.venv\Scripts\python.exe -m unittest check_click_release check_mode_gesture -v
 ```
 
-The current suite has 18 tests covering click-versus-hold timing, drag release and cancellation, release at a failsafe corner, cooldown, keyboard targeting and held-key suppression, keyboard layers, volume mapping/smoothing, endpoint cleanup, and HUD drawing. UI mode switching and guide construction were also checked. A read-only connection to the actual Windows audio endpoint succeeded.
+The available modules contain 11 mocked-output checks. They cover click release into an open palm, fast pinch acceptance, unchanged drag release, cancelled clicks, gesture hold/release, complete mode cycling, paused state, manual cancellation, and stale-settings protection.
 
-Tests mock emitted mouse/keyboard/audio changes; they do not prove live webcam recognition quality or cross-app drag/typing behavior. Manual testing remains necessary for camera ergonomics, window dragging, volume feel, and targeting keys in your lighting.
-
-
-### Drag continuity update
-
-While a click-hand pinch is held in cursor mode, it takes priority over finger poses that would otherwise select scrolling or pause. This prevents a finger folding during the grab from interrupting drag movement. Drag motion is relative to the fingertip and cursor positions at the grab, avoiding the jump caused by closing the index finger into a pinch. Release the pinch before selecting scrolling. Pause, tracking loss, mode change, and exit still release the mouse button.
-
-### Windows drag input update
-
-Active dragging now uses Windows SendInput mouse-movement events through mouse_input.py, rather than only repositioning the pointer with PyAutoGUI's SetCursorPos path. Movement events carry MOVE and ABSOLUTE flags without repeating button-down. Pinch release still sends mouse-up, and failsafe checks remain active. This targets drags that resume only after physical mouse movement. The current verification checked native input structure size, coordinate conversion, event flags, and pinch release with mocked output. Live dragging remains to be confirmed on the target window.
-
-Reference: [Microsoft MOUSEINPUT flags and absolute coordinates](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput).
-
-### Camera freeze during drag: independent processing
-
-The camera/gesture loop now runs in `engine.py` on its own tracking/input thread. `camera_preview.py` owns a separate preview thread with a single-frame queue. The Tk controller only sends configuration/commands and polls status messages. No tracking-thread code reads Tk variables or waits for Tk callbacks.
-
-This prevents a Windows window-move loop on the controller or preview thread from blocking gesture tracking and pinch release. Preview updates may pause while the preview window itself is being moved, but frame processing and mouse-up continue independently. Slow preview frames are replaced instead of queued indefinitely.
-
-Stopping, mode changes, and close request worker cleanup; the worker releases held input and closes camera/tracker/audio resources. Restart the application completely after this update.
-
-Verification: `python -m unittest test_engine -v` passes three tests. The regression deliberately blocks the preview's event handling while the actual gesture-processing loop detects a hold, emits drag movement, processes over 100 frames, and releases the button. All OS input is mocked. Real webcam behavior still needs a live check.
+Earlier tests verified worker/preview isolation, keyboard selection, volume mapping and cleanup; those historical test files are no longer present. A read-only Windows audio connection and UI checks passed during development. These checks do not certify live webcam recognition, natural movement, or successful input in every target application.

@@ -57,6 +57,8 @@ def build(app, settings):
     selector.pack(side='left')
     selector.bind('<<ComboboxSelected>>', app.change_control_mode)
     ttk.Checkbutton(modes, text='Sci-fi HUD', variable=app.hud_enabled).pack(side='right')
+    ttk.Label(shell, text='👍 Hold LEFT thumbs-up for 1.2s to cycle modes (either hand in one-hand mode). Release to continue.',
+              style='Muted.TLabel', wraplength=820).pack(anchor='w', pady=(6, 0))
     status_box = ttk.Frame(shell, style='Card.TFrame', padding=(14, 10))
     status_box.pack(fill='x', pady=(14, 16))
     ttk.Label(status_box, text='●', foreground=ACCENT, style='Card.TLabel').pack(side='left', padx=(0, 10))
@@ -166,6 +168,7 @@ def render_guide(app):
     mode = app.control_mode.get()
     title = ('Two hands, clear roles' if two else 'One hand, complete control') if mode == 'Mouse' else mode
     intro = ('Right hand aims. Left hand clicks or drags. Either palm scrolls.' if two else 'Point, pinch, hold to drag, or scroll with one hand.') if mode == 'Mouse' else ('Finger distance sets Windows volume. Mouse actions are paused.' if mode == 'Volume' else 'Aim at camera keys, then pinch to type into the focused app.')
+    intro += '\n👍 Hold ' + ('LEFT' if two else 'a') + ' thumbs-up 1.2s → next mode. Release before switching again.'
     ttk.Label(app.guide, text=title, style='Heading.TLabel').pack(anchor='w')
     ttk.Label(app.guide, text=intro, style='Muted.TLabel').pack(anchor='w', pady=(3, 12))
     grid = ttk.Frame(app.guide)
