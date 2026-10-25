@@ -1,0 +1,9 @@
+{
+  "smooth": 0.5,
+  "pinch_threshold": 0.045,
+  "click_cooldown": 0.5,
+  "scroll_threshold": 0.05,
+  "scroll_step": 2,
+  "camera_index": 0,
+  "mouse_speed": 1.0
+}
