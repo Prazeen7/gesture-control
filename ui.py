@@ -49,6 +49,14 @@ def build(app, settings):
     app.pause_button.pack(side='left', padx=(0, 8))
     ttk.Button(toolbar, text='Recenter hand', command=app.recenter).pack(side='left', padx=(0, 8))
     ttk.Button(toolbar, text='Stop camera', command=app.stop).pack(side='right')
+    modes = ttk.Frame(shell)
+    modes.pack(fill='x', pady=(12, 0))
+    ttk.Label(modes, text='Control mode', style='Heading.TLabel').pack(side='left', padx=(0, 12))
+    selector = ttk.Combobox(modes, textvariable=app.control_mode,
+                           values=('Mouse', 'Volume', 'Air keyboard'), state='readonly', width=18)
+    selector.pack(side='left')
+    selector.bind('<<ComboboxSelected>>', app.change_control_mode)
+    ttk.Checkbutton(modes, text='Sci-fi HUD', variable=app.hud_enabled).pack(side='right')
     status_box = ttk.Frame(shell, style='Card.TFrame', padding=(14, 10))
     status_box.pack(fill='x', pady=(14, 16))
     ttk.Label(status_box, text='●', foreground=ACCENT, style='Card.TLabel').pack(side='left', padx=(0, 10))
@@ -125,6 +133,7 @@ def build(app, settings):
              ('smooth', 'Cursor responsiveness', 'Lower feels smoother; higher follows your hand faster.', .05, 1),
              ('pinch_threshold', 'Pinch sensitivity', 'Higher recognizes a click with fingertips farther apart.', .015, .1),
              ('click_cooldown', 'Click cooldown', 'Seconds between clicks. Release each pinch before clicking again.', .1, 2),
+             ('drag_hold', 'Pinch hold to drag', 'Hold this many seconds to grab; release the pinch to drop.', .25, 1.5),
              ('scroll_threshold', 'Scroll activation distance', 'Lower values need a smaller palm movement to choose direction.', .005, .06)]
     for key, title, help_text, low, high in specs:
         box = ttk.Frame(tuning, style='Card.TFrame', padding=14)
@@ -154,8 +163,9 @@ def render_guide(app):
     for widget in app.guide.winfo_children():
         widget.destroy()
     two = app.two_hands.get()
-    title = 'Two hands, clear roles' if two else 'One hand, complete control'
-    intro = 'Right hand aims. Left hand clicks. Either open palm scrolls.' if two else 'Use either hand for movement, clicks, scrolling and pause.'
+    mode = app.control_mode.get()
+    title = ('Two hands, clear roles' if two else 'One hand, complete control') if mode == 'Mouse' else mode
+    intro = ('Right hand aims. Left hand clicks or drags. Either palm scrolls.' if two else 'Point, pinch, hold to drag, or scroll with one hand.') if mode == 'Mouse' else ('Finger distance sets Windows volume. Mouse actions are paused.' if mode == 'Volume' else 'Aim at camera keys, then pinch to type into the focused app.')
     ttk.Label(app.guide, text=title, style='Heading.TLabel').pack(anchor='w')
     ttk.Label(app.guide, text=intro, style='Muted.TLabel').pack(anchor='w', pady=(3, 12))
     grid = ttk.Frame(app.guide)
@@ -163,14 +173,26 @@ def render_guide(app):
     cards = [
         ('☝️', '01  Move the cursor', 'RIGHT HAND' if two else 'EITHER HAND',
          'Point your index finger and move gently. Enable at a comfortable height to set the center.', 'Recenter hand adjusts your comfortable position.'),
-        ('🤏', '02  Click', 'LEFT HAND' if two else 'SAME HAND',
-         'Touch thumb and index fingertips together briefly. Separate them before your next click.', 'Two-hand mode: keep your right pointing hand visible.' if two else 'One pinch makes one click.'),
+        ('🤏', '02  Click & drag', 'LEFT HAND' if two else 'SAME HAND',
+         'Short pinch + release clicks. Hold the pinch to grab, then move the pointing hand to drag.', 'Release the pinch to drop. Aim at a window title bar to move it.'),
         ('✋', '03  Palm scrolling' if two else '03  Pause', 'EITHER OPEN PALM' if two else 'OPEN PALM',
          'Open your palm. Move UP or DOWN once to lock the scroll direction. Reposition freely while it continues.' if two else 'Raise all four fingers to pause cursor movement and clicks.',
          'STOP: close your palm. Reopen to choose a new direction.' if two else 'Point your index finger to resume movement.'),
         ('✌️', '04  Auto scroll' if two else '04  Scroll', 'RIGHT HAND' if two else 'TWO FINGERS',
          'Raise index + middle fingers to continue in the last palm-scroll direction. Fold the other fingers.' if two else 'Raise index + middle. Shift up/down and hold to scroll; fold the other fingers.',
          'STOP: return to one pointing finger.' if two else 'Return to starting height or lower the middle finger to stop.')]
+    if mode == 'Volume':
+        cards = [
+            ('🔊', '01  Choose volume', 'EXPLICIT MODE', 'Select Volume, start the camera, then enable control. Mouse clicks and scrolling are suspended.', 'Use Pause control to stop changing volume.'),
+            ('🤏', '02  Adjust distance', 'RIGHT HAND' if two else 'EITHER HAND', 'Spread thumb and index to raise volume. Bring them closer to lower it.', 'A line and level meter show the current volume.'),
+            ('✋', '03  Keep it steady', 'HAND-RELATIVE RANGE', 'The gap is measured relative to palm size. Volume moves gradually to reduce sudden jumps.', 'Taking your hand out of view holds the current level.'),
+            ('☝️', '04  Return to mouse', 'MODE SELECTOR', 'Choose Mouse when finished. Each mode change pauses control; enable it again when ready.', 'Volume control uses your default Windows audio output.')]
+    elif mode == 'Air keyboard':
+        cards = [
+            ('⌨️', '01  Prepare to type', 'FOCUSED APP', 'Select Air keyboard and enable control. Focus the app or text field you want to type into.', 'The virtual keys appear over the camera preview.'),
+            ('☝️', '02  Aim at a key', 'RIGHT HAND' if two else 'EITHER HAND', 'Move the pointing index onto a camera-preview key. The highlighted key is your current target.', 'Mouse movement is suspended in keyboard mode.'),
+            ('🤏', '03  Pinch to type', 'LEFT HAND' if two else 'SAME HAND', 'Pinch briefly to select the highlighted key. Separate fingertips before typing the next key.', 'The target locks when the pinch starts.'),
+            ('🔠', '04  More keys', 'LAYERS & EDITING', 'Shift capitalizes the next letter. 123 / ABC switches layers. Space, Back and Enter edit your text.', 'Pause control stops all typing. Supports basic English input.')]
     app.guide_cards = []
     for i, (icon, heading, role, description, stop) in enumerate(cards):
         card = ttk.Frame(grid, style='Card.TFrame', padding=16)
@@ -187,5 +209,5 @@ def render_guide(app):
         grid.columnconfigure(col, weight=1, uniform='cards')
     for row in range(2):
         grid.rowconfigure(row, weight=1)
-    ttk.Label(app.guide, text='GET STARTED   1  Start camera     2  Show your pointing hand     3  Enable control',
+    ttk.Label(app.guide, text='GET STARTED   1  Choose mode     2  Start camera     3  Enable control',
               style='Muted.TLabel', wraplength=820).pack(anchor='w', pady=(0, 4))

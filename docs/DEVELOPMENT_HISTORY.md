@@ -28,3 +28,12 @@ Consolidated implementation history through 25 October 2026. This is a record of
 - Scroll amount was renamed temporarily during development; its current UI label is **Scroll amount**.
 - The camera-index setting remains internally, but the current UI uses the default webcam and exposes no selector.
 - Tests and UI checks do not replace live webcam validation. Smoothness and gesture reliability have been iterated in response to user feedback, rather than certified across camera hardware.
+
+
+## Advanced feature expansion
+
+Added selectable Mouse, Volume and Air keyboard modes; short-pinch release clicking and hold-to-drag; Windows Core Audio volume from hand-relative thumb/index distance; camera-space English keyboard with Shift and symbol layers; and a toggleable sci-fi HUD. Added drag-hold and HUD preferences, mode-specific guide cards, output cleanup, and a current 14-test suite. See ADVANCED_FEATURES.md.
+
+### Drag freeze architecture correction
+
+Moved camera capture, hand inference and mouse output into an independent GestureEngine worker. The OpenCV preview has a separate thread and a latest-frame queue. Tk remains responsible only for widgets, queued commands and status. Added a regression that blocks preview processing while tracking, drag movement and release continue.

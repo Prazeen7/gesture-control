@@ -2,6 +2,8 @@
 
 Updated: 25 October 2026.
 
+For drag-and-drop, Volume mode, Air keyboard mode, and the camera HUD, see [Advanced features](ADVANCED_FEATURES.md). The mouse controls below apply while Mouse mode is selected.
+
 ## 1. Setup and launch
 
 You need a working webcam, Windows camera access, Python 3.11 with Tkinter, and OpenCV, MediaPipe, PyAutoGUI, and NumPy. See the [README](../README.md#quick-start) for installation commands.
@@ -46,7 +48,7 @@ If reaching an edge is difficult, click **Recenter hand** while your hand is com
 
 ### 🤏 Click with the left hand
 
-Keep the right pointing hand visible. Touch the left thumb and index fingertips together briefly, then separate them before clicking again. Pinching must persist for roughly 45 milliseconds. Click cooldown also applies.
+Keep the right pointing hand visible. Touch the left thumb and index fingertips together briefly, then separate them before clicking again. A short pinch must persist for roughly 45 milliseconds and clicks when released. Holding for the configured drag duration starts dragging instead; release to drop. Click cooldown also applies.
 
 The right cursor hand can continue moving while the left pinches. Aim steadily when clicking a small target. The removed index-bend click gesture is not available.
 
@@ -88,7 +90,7 @@ Turn off **Two-hand mode**. The first detected hand supplies all controls; use o
 
 For scrolling, start the two-finger gesture, shift upward or downward from its starting height, and hold. Greater displacement beyond the dead zone increases the rate. Return to the starting height or lower the middle finger to stop. This differs from two-hand palm direction lock.
 
-During a detected one-hand pinch, cursor movement is held to steady the click. Open palm takes priority over scrolling. Switching hand modes resets gesture state and recenters the next cursor gesture.
+During a detected one-hand pinch, cursor movement is held until dragging starts; it then follows the finger while the button is held. Open palm takes priority over scrolling. Switching hand modes resets gesture state and recenters the next cursor gesture.
 
 ## 5. Settings
 
@@ -162,4 +164,4 @@ This application requires the legacy API. Use the project's Python 3.11 environm
 
 Video processing happens locally. The application contains no recording or upload feature. It controls the real system mouse, and PyAutoGUI's corner failsafe remains enabled.
 
-Recognition depends on lighting, angle, distance, hand overlap, and camera frame rate. Scrolling uses discrete wheel events, not native precision-touchpad gestures. Right-click, drag-and-drop, virtual keyboard, custom gesture training, and multi-monitor calibration are not implemented.
+Recognition depends on lighting, angle, distance, hand overlap, and camera frame rate. Scrolling uses discrete wheel events, not native precision-touchpad gestures. Right-click, custom gesture training, and multi-monitor calibration are not implemented. Drag-and-drop, a basic English virtual keyboard, Windows volume control, and HUD are described in the advanced guide.

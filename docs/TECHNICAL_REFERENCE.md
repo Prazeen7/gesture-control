@@ -2,6 +2,10 @@
 
 Implementation snapshot: 25 October 2026. This document describes the source currently in the project, including internal behavior that is not exposed in the UI.
 
+## Advanced controls
+
+The application now includes drag-and-drop, Windows volume, air typing, and a camera HUD. See [Advanced features](ADVANCED_FEATURES.md) for current mode behavior and verification. interactions.py contains pure interaction state machines; features.py dispatches and renders the modes; system_volume.py wraps Core Audio.
+
 ## Architecture
 
 | File | Responsibility |
@@ -20,9 +24,9 @@ Implementation snapshot: 25 October 2026. This document describes the source cur
 4. Assign pointer/action roles and classify gestures.
 5. Apply the gesture transition delay and dispatch movement, clicking, or scrolling if control is enabled.
 6. Draw status and vertical working-area lines, display the OpenCV preview, and process Q/window closure.
-7. Schedule the next Tk callback with `after(1, ...)`.
+7. Continue the tracking worker loop; submit the frame to the independent preview queue.
 
-The loop runs on the Tk thread. Camera reads and inference can delay UI updates; the 1 ms scheduling interval is not a guarantee of 1 ms frame latency. Stopping cancels the pending callback, releases camera/tracker resources, and closes OpenCV windows.
+The camera and gesture loop now runs independently in engine.py. Camera preview runs in camera_preview.py on a second worker, with only the newest frame retained. Tk sends commands and polls status, and does not schedule frame processing. Stop requests release input and camera/tracker/audio resources on the processing thread.
 
 MediaPipe is configured for up to two hands with detection and tracking confidence thresholds of 0.7. Camera startup requests 640 × 480; the actual camera may negotiate a different resolution.
 
@@ -66,11 +70,11 @@ Output stays one pixel inside the top/left and two pixels inside the bottom/righ
 
 `follow()` ignores target distances under 1.5 pixels and applies an exponential filter. Responsiveness sets the base response, and greater target distance increases the response to reduce travel lag. Elapsed time is used rather than a fixed per-frame smoothing factor. The caller bounds elapsed time to 1–100 ms.
 
-In two-hand mode, left-hand pinching does not freeze right-hand cursor movement. One-hand cursor movement is held during an active pinch. Mouse output uses PyAutoGUI with pause set to zero and failsafe enabled.
+In two-hand mode, left-hand pinching does not freeze right-hand cursor movement. One-hand cursor movement is held during a pinch until dragging starts, then follows the finger with the mouse button held. Mouse output uses PyAutoGUI with pause set to zero and failsafe enabled.
 
 ## Click gating
 
-Pinch distance is measured between thumb and index tips in normalized 2D coordinates. Entry uses `pinch_threshold`; release uses 1.45 times that threshold to reduce flicker. A pinch must persist for approximately 45 ms and satisfy click cooldown. A held pinch produces at most one click until released.
+Pinch distance is measured between thumb and index tips in normalized 2D coordinates. Entry uses `pinch_threshold`; release uses 1.45 times that threshold to reduce flicker. A short pinch must persist for approximately 45 ms and satisfy click cooldown; it clicks on release. Holding for drag_hold (default 0.45 seconds) emits left mouse-down. Release emits mouse-up without an extra click. Pause, loss of tracking, scrolling, mode changes, and exit cancel pending clicks and release held buttons.
 
 Changing modes or losing the required hand blocks a held pinch from immediately creating a click on reentry. Index-bend clicking was removed. Only left clicks are emitted.
 
@@ -131,19 +135,21 @@ Save settings writes the current UI values to settings.json. The currently saved
 ## Tests and verification
 
 ```powershell
-.venv\Scripts\python.exe -m unittest test_motion test_click_speed test_hand_roles test_palm_scroll
+.venv\Scripts\python.exe -m unittest discover -p "test_*.py"
 .venv\Scripts\python.exe -m py_compile main.py ui.py motion.py camera.py
 ```
 
-The four committed test modules contain 18 tests covering cursor bounds and response, one-hand scroll behavior, scroll scaling above 10, deterministic hand roles, palm-source priority, source reanchoring, and direction lock across return strokes.
+The current checkout contains test_features.py with 18 tests for drag, keyboard, volume mapping, output cleanup, and HUD. Earlier helper test modules are no longer present. See ADVANCED_FEATURES.md for current verification details.
 
 During development, the motion suite and UI checks passed. UI checks included mode switching, scroll-value persistence, smaller windows, and equal selected/unselected navigation dimensions. Camera backend fallback and physical camera switching have not been verified against the user's hardware. Automated helper tests do not establish live tracking accuracy, correct driver behavior, or natural-feeling mouse interaction.
 
 ## Current limitations
 
 - Primary-screen mapping; no multi-monitor calibration.
-- Tk and camera inference share a thread.
+- Camera-driver reads may still block their own tracking worker; Tk and preview processing are independent.
 - Hand classification depends on landmark quality and pose.
 - No native precision-touchpad events or kinetic scrolling.
-- No right-click, double-click gesture, drag-and-drop, custom model training, or keyboard control.
+- No right-click or double-click gesture, custom model training, or multilingual IME input. Basic English air typing, left-button dragging, and Windows volume control are implemented.
 - No dependency lockfile or packaged desktop installer.
+
+
