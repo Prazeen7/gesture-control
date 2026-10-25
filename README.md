@@ -1,175 +1,87 @@
-# AI Gesture Control
+# Gesture Control
 
-Control your computer's mouse using hand gestures captured by your
-webcam. Built with Python, OpenCV, MediaPipe, and PyAutoGUI.
+A local Windows desktop application that controls the mouse using webcam hand gestures. It combines OpenCV, MediaPipe, PyAutoGUI, and a Tkinter control panel.
 
-## Current controls
+Documentation reflects the implementation as of **25 October 2026**.
 
-  -----------------------------------------------------------------------
-  Gesture / input         Action                  Notes
-  ----------------------- ----------------------- -----------------------
-  Move your index         Move cursor             Maps the index
-  fingertip                                       fingertip to screen
-                                                  coordinates with
-                                                  smoothing.
+## Documentation
 
-  Touch thumb and index   Left click              One click per new
-  fingertips together                             pinch, with a
-                                                  0.5-second cooldown.
+- [User guide](docs/USER_GUIDE.md): setup, gestures, controls, settings, and troubleshooting.
+- [Technical reference](docs/TECHNICAL_REFERENCE.md): architecture, recognition rules, configuration, and testing.
+- [Development history](docs/DEVELOPMENT_HISTORY.md): changes made so far and superseded behavior.
 
-  Raise index and middle  Enter scroll mode       Move the raised fingers
-  fingers; fold ring and                          vertically to scroll.
-  pinky                                           
+## Quick start
 
-  Move raised index and   Scroll up               Uses relative movement
-  middle fingers upward                           after a small
-                                                  threshold.
+From PowerShell in the project directory, using the existing environment:
 
-  Move raised index and   Scroll down             Uses relative movement
-  middle fingers downward                         after a small
-                                                  threshold.
+```powershell
+.venv\Scripts\python.exe main.py
+```
 
-  Raise index, middle,    Pause cursor movement   The mouse stops moving
-  ring, and pinky fingers                         while the open-palm
-                                                  gesture is detected.
+For a new environment, use Python 3.11:
 
-  Press `Q`               Quit                    The webcam preview
-                                                  window must have
-                                                  keyboard focus.
-
-  Move cursor to a screen Emergency stop          PyAutoGUI's failsafe
-  corner                                          raises an exception;
-                                                  the program cleans up
-                                                  the camera.
-  -----------------------------------------------------------------------
-
-**Gesture priority:** Open palm takes priority over scrolling. Scrolling
-takes priority over cursor movement and clicking. The thumb is not
-checked for open-palm or scroll-mode detection. Gesture recognition can
-be affected by lighting and camera angle.
-
-## Requirements
-
--   Windows 10/11 (the current tested setup target); other operating
-    systems may need additional permissions or changes
--   A working webcam
--   Python 3.11 recommended
--   Python packages: `opencv-python`, `mediapipe`, `pyautogui`, `numpy`
-
-## Setup (Windows PowerShell)
-
-``` powershell
-mkdir gesture-control
-cd gesture-control
+```powershell
 py -3.11 -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install opencv-python mediapipe==0.10.21 pyautogui numpy
+.venv\Scripts\python.exe -m pip install opencv-python mediapipe==0.10.21 pyautogui numpy
+.venv\Scripts\python.exe main.py
 ```
 
-If you already created the project and virtual environment, activate it
-and install the dependencies; you do not need to recreate the folder.
+The application uses the legacy `mp.solutions.hands` API. The version above is the project's documented compatible MediaPipe target; dependency versions are not locked in a requirements file. Tkinter must be included in your Python installation.
 
-The current `main.py` uses `mp.solutions.hands`, an older MediaPipe API.
-MediaPipe `0.10.21` supports this API, but may not have a compatible
-wheel for newer Python versions. If installation fails, use Python 3.11
-or migrate the code to the MediaPipe Tasks API.
+1. Click **Start camera**. Mouse control starts paused.
+2. Show your right index finger at a comfortable height.
+3. Click **Enable control**.
+4. Use the gestures below. Click **Save settings** to retain adjustments.
 
-## Run
+## Default two-hand controls
 
-From the project directory, with the virtual environment activated:
+| Gesture | Action | How to stop / repeat |
+| --- | --- | --- |
+| ☝️ Right index finger | Move cursor | Pause control or change gesture |
+| 🤏 Left thumb + index pinch | Left click | Separate fingertips before another click |
+| ✋ Either open palm, then move up/down once | Lock continuous scrolling in that direction | Close the palm; reopen to choose another direction |
+| ✌️ Right index + middle fingers | Auto-scroll in the last palm-scroll direction | Return to one pointing finger |
+| Space in the control panel | Pause / resume all mouse control | Press again to toggle |
+| Escape in the panel | Stop camera | Start camera again |
+| Q in the camera preview | Stop camera | Start camera again |
 
-``` powershell
-python main.py
-```
+**Palm scrolling continues while the hand is open, including when it holds still or returns downward after an upward stroke.** Close the palm to stop. The left palm takes priority when both palms are open and can scroll without the right hand visible.
 
-Allow webcam access if prompted. A window named **AI Gesture Control**
-should appear, showing the hand landmarks and the current status
-(`NO HAND`, `MOVING`, `CLICK`, `SCROLL`, or `PAUSED`).
+Turn off **Two-hand mode** for one-hand controls. In that mode, open palm pauses, and two raised fingers use displacement-based scrolling. See the [user guide](docs/USER_GUIDE.md) for the differences.
 
-## How to use
+## Interface
 
-1.  Put one hand in view of the webcam in good lighting.
-2.  Move your index fingertip to control the cursor.
-3.  Touch your thumb and index fingertips to left-click; separate them
-    before clicking again.
-4.  Hold up your index and middle fingers while folding the other two
-    fingers; move vertically to scroll.
-5.  Open your hand with four fingers raised to pause movement.
-6.  Focus the camera preview window and press `Q` to exit.
+- **Gesture guide:** Four emoji cards with hand assignments, instructions, and stopping actions.
+- **Controls & settings:** Scroll amount, mouse speed, vertical hand travel, responsiveness, pinch sensitivity, click cooldown, and scroll activation distance.
+- Camera buttons, status, Save settings, and Restore defaults stay outside the scrolling pages.
+- Both navigation buttons have equal dimensions; selection changes their colors.
+- The app uses the default webcam. Camera-index selection is no longer exposed in the UI.
 
-**Safety:** Test on a noncritical window first. The app controls your
-real system mouse. PyAutoGUI's failsafe is enabled
-(`pyautogui.FAILSAFE = True`). If the cursor reaches a corner, the
-failsafe may terminate the program with an exception.
+## Project files
 
-## Tuning
-
-In `main.py`:
-
-  -----------------------------------------------------------------------
-  x
-
-## Troubleshooting
-
-**`AttributeError: module 'mediapipe' has no attribute 'solutions'`**
-
-The installed MediaPipe version does not expose the legacy API expected
-by this code. In your activated virtual environment:
-
-``` powershell
-python -m pip uninstall mediapipe -y
-python -m pip install mediapipe==0.10.21
-python -c "import mediapipe as mp; print(mp.__version__); print(hasattr(mp, 'solutions'))"
-```
-
-For this version, the last command should print `0.10.21` and `True`.
-
-**Camera won't open:** Check Windows camera permissions, close other
-applications using the webcam, or try another camera index.
-
-**Mouse movement is jittery:** Improve lighting and reduce `smooth` (for
-example, to `0.15`).
-
-**Clicks happen accidentally:** Reduce the pinch threshold slightly (for
-example, to `0.035`).
-
-**Scrolling doesn't work:** Keep only the index and middle fingers
-raised, and move them vertically enough to cross the threshold.
-
-## Not implemented yet
-
--   Right-click and double-click gestures
--   Drag-and-drop
--   Volume control
--   Virtual keyboard
--   Custom gesture training
--   On-screen calibration and futuristic HUD
-
-## Project structure
-
-``` text
+```text
 gesture-control/
-├── main.py
-├── README.md
-└── .venv/       # Local Python environment (do not commit)
+  main.py                    Application lifecycle and gesture dispatch
+  ui.py                      Desktop UI and mode-aware guide
+  motion.py                  Mapping, smoothing, scroll logic, and hand roles
+  camera.py                  Camera backend fallback and cleanup
+  settings.json              Saved preferences
+  test_motion.py             Mapping and one-hand scroll tests
+  test_click_speed.py        Scroll scaling tests
+  test_hand_roles.py         Hand assignment tests
+  test_palm_scroll.py         Palm direction, return stroke, and source tests
+  docs/                      Detailed documentation
+  .venv/                     Local Python environment
 ```
 
-## Privacy
+## Verification and limits
 
-Hand detection runs locally through the webcam. The provided script does
-not intentionally record or upload webcam video.
+The existing motion suite contains 18 tests. Run it with:
 
-## Desktop control panel
+```powershell
+.venv\Scripts\python.exe -m unittest test_motion test_click_speed test_hand_roles test_palm_scroll
+```
 
-Run `python main.py` to open the controls and gesture guide. Click **Start camera**, then **Enable control**. The camera starts paused. Use **Pause control** or Space in the panel to toggle control. Escape stops the camera; Q works in the camera preview.
+Motion tests and UI checks have passed during development. Live gesture accuracy, camera availability, and perceived smoothness still depend on hardware, lighting, and hand visibility. The app emits mouse-wheel steps; it does not implement native precision-touchpad scrolling.
 
-Settings apply immediately:
-- **Mouse speed:** Increase to cover more screen distance with less hand movement.
-- **Cursor responsiveness:** Lower values smooth movement; higher values follow faster.
-- **Pinch sensitivity:** Increase to recognize a pinch with fingertips farther apart.
-- **Click cooldown:** Minimum delay between clicks; release the pinch before clicking again.
-- **Scroll movement threshold:** Movement needed to trigger scrolling.
-- **Scroll amount:** Number of scroll steps per movement.
-- **Camera index:** Stop and restart the camera to apply a camera change.
-
-Click **Save settings** to persist settings in settings.json. **Restore defaults** applies defaults immediately; save to keep them. The panel uses built-in Tkinter. Closing it releases the camera.
+Only left clicking is implemented. Right clicking, dragging, custom gesture training, and multi-monitor calibration are not implemented. Hand processing runs locally; the application does not record or upload video.
